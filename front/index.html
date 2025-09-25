@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messagerie Locale</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="sidebar">
+            <h1>Bienvenue, <span id="usernameDisplay"></span> !</h1>
+            <button id="new-chat-btn">Créer une conversation</button>
+            <h3>Messages</h3>
+            <ul id="user-list">
+            </ul>
+            <button id="logoutBtn">Se déconnecter</button>
+            <button id="createUserBtn" style="display:none;">
+                Créer un utilisateur
+            </button>
+
+            <div id="new-chat-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn">&times;</span>
+                    <h3>Nouvelle conversation</h3>
+                    <input type="text" id="invite-user-input" placeholder="Nom de l'utilisateur">
+                    <button id="create-chat-btn">Créer</button>
+                </div>
+            </div>
+        </div>
+        
+    
+        <div class="main-chat">
+            <div id="messages-display"></div>
+            <div class="input-area">
+                <input type="text" id="message-input" placeholder="Taper votre message...">
+                <button id="send-button">Envoyer</button>
+                </div class="footer-chat">
+                    <button id="close-chat-btn"><b>Clore la conversation</b></button>
+                <div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Admin - Créer un utilisateur</title>
+</head>
+<body>
+<h1>Créer un utilisateur</h1>
+
+<div>
+    <label>Nom d'utilisateur :</label>
+    <input type="text" id="username-input" />
+</div>
+<div>
+    <label>Mot de passe :</label>
+    <input type="password" id="password-input" />
+</div>
+<div>
+    <label>Rôle :</label>
+    <select id="role-select">
+        <option value="user">Utilisateur</option>
+        <option value="admin">Admin</option>
+    </select>
+</div>
+<button id="create-user-btn">Créer l'utilisateur</button>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    const authToken = localStorage.getItem('authToken');
+    const role = localStorage.getItem('role');
+     if (!authToken || role !== "admin") {
+        // Rediriger si non admin
+        localStorage.removeItem('authToken');
+        window.location.href = "../authentification/auth.html";
+    }
+
+    const createBtn = document.getElementById('create-user-btn');
+
+    createBtn.addEventListener('click', async () => {
+        const username = document.getElementById('username-input').value.trim();
+        const password = document.getElementById('password-input').value.trim();
+        const role = document.getElementById('role-select').value;
+
+        if (!username || !password || !role) {
+            alert("Tous les champs sont obligatoires.");
+            return;
+        }
+
+        try {
+            const response = await fetch('http://10.60.12.114:3000/admin/create-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ username, password, role })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert("Erreur: " + data.message);
+                return;
+            }
+
+            alert(`Utilisateur créé avec succès: ${data.user.username} (${data.user.role})`);
+            document.getElementById('username-input').value = '';
+            document.getElementById('password-input').value = '';
+
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de la création de l'utilisateur.");
+        }
+    });
+});
+</script>
+</body>
+</html>
