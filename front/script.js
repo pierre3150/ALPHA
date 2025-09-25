@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {  // <-- async ajoutÃ
             const response = await fetch(process.env.API_URL, {
                 method: 'GET',
                 headers: {'Content-Type' : 'application/json'},
+                body: idUser
             });
             const data = JSON.stringify(response);
             if(data.message!='') {
