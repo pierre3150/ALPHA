@@ -1,242 +1,268 @@
-document.addEventListener('DOMContentLoaded', async () => {  // <-- async ajouté ici
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
-    const messagesDisplay = document.getElementById('messages-display');
-    const newChatBtn = document.getElementById('new-chat-btn');
-    const newChatModal = document.getElementById('new-chat-modal');
-    const closeBtn = document.querySelector('.close-btn');
-    const inviteUserInput = document.getElementById('invite-user-input');
-    const createChatBtn = document.getElementById('create-chat-btn');
-    const closeChatBtn = document.getElementById('close-chat-btn');
-    const usernameDisplay = document.getElementById('usernameDisplay');
+// script.js
+document.addEventListener('DOMContentLoaded', async () => {
+  const BASE = "https://10.60.12.114:3000"; // adapte si besoin
+  const authToken = localStorage.getItem('authToken');
+  const role = localStorage.getItem('role');
+  const idUser = localStorage.getItem('idUser'); // doit être rempli au login
+  const usernameDisplay = document.getElementById('usernameDisplay');
 
-    
-    const authToken = localStorage.getItem('authToken');
-    const role = localStorage.getItem('role');
-    const idUser = localStorage.getItem('idUser');
-    
-    if (!authToken) {
-        window.location.href = 'authentification/auth.html';
-        return;
+  // UI elements
+  const newChatBtn = document.getElementById('new-chat-btn');
+  const newChatModal = document.getElementById('new-chat-modal');
+  const closeBtn = newChatModal.querySelector('.close-btn');
+  const inviteUserInput = document.getElementById('invite-user-input');
+  const createChatBtn = document.getElementById('create-chat-btn');
+  const userList = document.getElementById('user-list');
+  const messagesDisplay = document.getElementById('messages-display');
+  const messageInput = document.getElementById('message-input');
+  const sendButton = document.getElementById('send-button');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const createUserBtn = document.getElementById('createUserBtn');
+  const closeChatBtn = document.getElementById('close-chat-btn');
+
+  // State
+  let conversations = []; // list of canaux for current user
+  let activeConversation = null; // { id, userid1, userid2 }
+  let pollingInterval = null;
+
+  // Small Toast helper
+  const toast = (text, type = 'info') => {
+    const bg =
+      type === 'error'
+        ? 'linear-gradient(to right, #ff5f6d, #ffc371)'
+        : type === 'success'
+        ? 'linear-gradient(to right, #00b09b, #96c93d)'
+        : 'linear-gradient(to right,#4b6cb7,#182848)';
+    Toastify({ text, duration: 4000, gravity: 'top', position: 'center', backgroundColor: bg }).showToast();
+  };
+
+  // Redirect if no token
+  if (!authToken) {
+    window.location.href = 'authentification/auth.html';
+    return;
+  }
+
+  // Verify token on server
+  try {
+    const resp = await fetch(`${BASE}/auth/verify-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+    });
+    if (!resp.ok) throw new Error('Token invalide');
+    const d = await resp.json();
+    usernameDisplay.textContent = d.username;
+    // optionally update localStorage id/role if missing
+    if (!idUser && d.id) localStorage.setItem('idUser', d.id);
+    if (!localStorage.getItem('role') && d.role) localStorage.setItem('role', d.role);
+  } catch (err) {
+    console.error(err);
+    localStorage.removeItem('authToken');
+    window.location.href = 'authentification/auth.html';
+    return;
+  }
+
+  // Show admin button if role
+  if (role === 'admin') createUserBtn.style.display = 'block';
+
+  // Modal open/close
+  newChatBtn.addEventListener('click', () => {
+    newChatModal.style.display = 'flex';
+    inviteUserInput.focus();
+  });
+  closeBtn.addEventListener('click', () => (newChatModal.style.display = 'none'));
+  window.addEventListener('click', (e) => {
+    if (e.target === newChatModal) newChatModal.style.display = 'none';
+  });
+
+  // Logout
+  logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('username');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('role');
+    localStorage.removeItem('idUser');
+    window.location.href = 'authentification/auth.html';
+  });
+
+  // Fetch conversations for current user and render UI
+  async function loadConversations() {
+    try {
+      const res = await fetch(`${BASE}/canaux?userId=${idUser}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) throw new Error('Impossible de récupérer les conversations');
+      conversations = await res.json();
+      renderConversationList();
+    } catch (err) {
+      console.error(err);
+      toast('Erreur chargement conversations', 'error');
+    }
+  }
+
+  function renderConversationList() {
+    userList.innerHTML = '';
+    if (!conversations.length) {
+      userList.innerHTML = '<li>Aucune conversation</li>';
+      return;
+    }
+    conversations.forEach((c) => {
+      const otherId = c.userid1 == idUser ? c.userid2 : c.userid1;
+      const item = document.createElement('li');
+      item.className = 'conversation-item';
+      item.dataset.canalId = c.id;
+      item.textContent = `Conversation #${c.id}`;
+      item.addEventListener('click', () => selectConversation(c));
+      userList.appendChild(item);
+    });
+  }
+
+  // Select a conversation (load messages)
+  async function selectConversation(canal) {
+    activeConversation = canal;
+    messagesDisplay.innerHTML = '';
+    document.querySelector('.main-chat').style.display = 'flex';
+
+    try {
+      const res = await fetch(`${BASE}/messages?canalId=${canal.id}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) throw new Error('Impossible de charger les messages');
+      const msgs = await res.json();
+      msgs.forEach(renderMessage);
+      // start polling new messages for this canal
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(() => refreshMessages(canal.id), 3000);
+      messagesDisplay.scrollTop = messagesDisplay.scrollHeight;
+    } catch (err) {
+      console.error(err);
+      toast('Erreur chargement messages', 'error');
+    }
+  }
+
+  async function refreshMessages(canalId) {
+    try {
+      const res = await fetch(`${BASE}/messages?canalId=${canalId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) return;
+      const msgs = await res.json();
+      messagesDisplay.innerHTML = '';
+      msgs.forEach(renderMessage);
+      messagesDisplay.scrollTop = messagesDisplay.scrollHeight;
+    } catch (err) {
+      console.error('Refresh messages:', err);
+    }
+  }
+
+  function renderMessage(msg) {
+    const div = document.createElement('div');
+    div.className = msg.senderId == idUser ? 'sent' : 'received';
+    div.textContent = msg.content || msg.encryptedMessage || JSON.stringify(msg);
+    messagesDisplay.appendChild(div);
+  }
+
+  // Create conversation flow
+  createChatBtn.addEventListener('click', async () => {
+    const invitedUsername = inviteUserInput.value.trim();
+    if (!invitedUsername) {
+      toast("Entre le nom d'utilisateur à inviter", 'error');
+      return;
     }
 
     try {
-        const response = await fetch('http://10.60.12.114:3000/auth/verify-token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
+      // find invited user by username
+      const ures = await fetch(`${BASE}/users?username=${encodeURIComponent(invitedUsername)}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!ures.ok) throw new Error('Utilisateur introuvable');
+      const users = await ures.json();
+      if (!users || users.length === 0) {
+        toast("Utilisateur introuvable", 'error');
+        return;
+      }
+      const invitedUser = users[0];
 
-        if (!response.ok) throw new Error('Token invalide');
-
-        const data = await response.json();  
-        usernameDisplay.textContent = data.username; // récupéré depuis le serveur
+      // create canal
+      const cres = await fetch(`${BASE}/canaux/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ userId1: idUser, userId2: invitedUser.id }),
+      });
+      if (!cres.ok) {
+        const err = await cres.json().catch(() => ({}));
+        throw new Error(err.message || 'Impossible de créer le canal');
+      }
+      const newCanal = await cres.json();
+      toast('Canal créé', 'success');
+      newChatModal.style.display = 'none';
+      inviteUserInput.value = '';
+      // refresh list and auto-select
+      await loadConversations();
+      const created = conversations.find((c) => Number(c.id) === Number(newCanal.id));
+      if (created) selectConversation(created);
     } catch (err) {
-        console.error(err);
-        localStorage.removeItem('authToken');
-        window.location.href = 'authentification/auth.html';
+      console.error(err);
+      toast(err.message || 'Erreur création canal', 'error');
     }
+  });
 
-    // Gestion du bouton de déconnexion
-    document.getElementById('logoutBtn').addEventListener('click', function() {
-        // Suppression des données de connexion du localStorage
-        localStorage.removeItem('username');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('role');
-        // Redirection vers la page de connexion
-        window.location.href = 'authentification/auth.html';
-    });
+  // Send message
+  sendButton.addEventListener('click', () => sendMessage(idUser));
+  messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage(idUser);
+  });
 
-     const createUserBtn = document.getElementById("createUserBtn");
-
-    // Montrer le bouton uniquement si admin
-    if (role === "admin") {
-        createUserBtn.style.display = "block";
+  async function sendMessage(senderId) {
+    if (!activeConversation) {
+      toast('Sélectionne une conversation d\'abord', 'error');
+      return;
     }
-
-    // Redirection vers la page admin
-    createUserBtn.addEventListener("click", () => {
-        window.location.href = "create_user/admin.html";
-    });
-    
-    // Placeholder pour l'ID de la conversation active
-    let activeConversationId = "conv-123";
-
-    // --- LOGIQUE DE GESTION DE LA FENÊTRE MODALE ---
-    newChatBtn.addEventListener('click', () => {
-        newChatModal.style.display = 'flex';
-    });
-    
-    closeBtn.addEventListener('click', () => {
-        newChatModal.style.display = 'none';
-    });
-
-    // Envoi de la requête de création de conversation
-    createChatBtn.addEventListener('click', () => {
-        const invitedUser = inviteUserInput.value.trim();
-        
-        if (invitedUser) {
-            sendNewConversationRequest(invitedUser);
-            document.querySelector('.main-chat').style.display = 'flex';
-            newChatModal.style.display = 'none';
-            inviteUserInput.value = '';
-        } else {
-            alert('Veuillez entrer un nom d\'utilisateur et un mot de passe.');
-        }
-    });
-
-    // Fonction vérifiant si des messages doivent être chargés       
-        try {
-            const response = await fetch(process.env.API_URL, {
-                method: 'GET',
-                headers: {'Content-Type' : 'application/json'},
-                body: idUser
-            });
-            const data = JSON.stringify(response);
-            if(data.message!='') {
-                document.querySelector('.main-chat').style.display = 'flex';
-                messagesDisplay.appendChild(data);
-            } else return 
-        } catch {
-            console.log(new Error);
-        }
-    
-
-
-    async function sendNewConversationRequest(invitedUser, password) {
-        // NOTE: Cette fonction devrait envoyer une requête au back-end pour créer une conversation
-        console.log(`Requête de création de conversation envoyée pour : ${invitedUser}`);
-        try {
-            const response = await fetch(process.env.API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ invitedUser, password })
-            });
-            const data = await response.json();
-            activeConversationId = data.conversationId;
-            // ... mettre à jour l'interface ...
-        } catch (error) {
-            console.error('Erreur lors de la création de la conversation:', error);
-        }
+    const text = messageInput.value.trim();
+    if (!text) return;
+    try {
+      const res = await fetch(`${BASE}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          canalId: activeConversation.id,
+          senderId,
+          content: text,
+        }),
+      });
+      if (!res.ok) throw new Error('Erreur envoi message');
+      const msg = await res.json();
+      renderMessage(msg); // afficher immédiatement
+      messageInput.value = '';
+      messagesDisplay.scrollTop = messagesDisplay.scrollHeight;
+    } catch (err) {
+      console.error(err);
+      toast('Erreur envoi message', 'error');
     }
+  }
 
-    // --- LOGIQUE D'ENVOI DES MESSAGES ---
-    sendButton.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            sendMessage();
-        }
-    });
-
-    async function sendMessage(idUser) {
-        console.log(idUser);
-        
-        const messageText = messageInput.value.trim();
-        if (messageText === '') return;
-
-        const messageData = {
-            message: messageText, 
-            idResistant: activeConversationId, 
-            sender: idUser, 
-        };
-        console.log(messageData);
-        
-        try {
-            const response = await fetch(process.env.API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(messageData)
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erreur HTTP: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('Message envoyé et reçu du serveur:', data);
-
-            // Création de l'élément visuel du message
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message', 'sent');
-            messageElement.textContent = messageText;
-            messagesDisplay.appendChild(messageElement);
-            messagesDisplay.scrollTop = messagesDisplay.scrollHeight;
-
-            messageInput.value = '';
-
-            // Rendre le message éphémère
-            const DURATION_MS = 30 * 1000;
-            setTimeout(() => {
-                messageElement.remove();
-            }, DURATION_MS);
-            
-        } catch (error) {
-            console.error('Erreur lors de l\'envoi du message:', error);
-            Toastify({
-                text: "Échec de l'envoi du message.",
-                backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
-                duration: 3000
-            }).showToast();
-        }
+  // Close conversation (delete canal)
+  closeChatBtn.addEventListener('click', async () => {
+    if (!activeConversation) {
+      toast('Aucune conversation active', 'error');
+      return;
     }
-    
-    // --- LOGIQUE DE FERMETURE DE CONVERSATION ---
-    closeChatBtn.addEventListener('click', () => {
-        if (confirm("Êtes-vous sûr de vouloir fermer cette conversation et supprimer toutes ses données ?")) {
-            closeActiveConversation();
-        }
-    });
-
-    async function closeActiveConversation() {
-        if (activeConversationId) {
-            console.log(`Requête de suppression envoyée pour la conversation ID: ${activeConversationId}`);
-            
-            // ALIGNEMENT AVEC LE BACK-END :
-            // Il faudrait envoyer l'ID de l'utilisateur qui ferme la conversation,
-            // et non l'ID de la conversation elle-même. 
-            const userToDelete = {
-                id_User: "id-de-l-utilisateur-actuel" // Ceci devrait être dynamique
-            };
-
-            try {
-                // Utilisation d'une méthode 'DELETE' pour des raisons de sémantique REST
-                const response = await fetch(`${process.env.API_CONVERSATIONS_URL}/${activeConversationId}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userToDelete) 
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Erreur lors de la suppression: ${response.status}`);
-                }
-
-                messagesDisplay.innerHTML = '';
-                inviteUserInput.value = '';
-
-                Toastify({
-                    text: "La conversation a été fermée et supprimée.",
-                    duration: 3000,
-                    backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
-                }).showToast();
-
-            } catch (error) {
-                console.error("Erreur lors de la fermeture de la conversation:", error);
-                Toastify({
-                    text: "Erreur lors de la fermeture de la conversation.",
-                    duration: 3000,
-                    backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
-                }).showToast();
-            }
-
-        } else {
-            console.warn("Aucune conversation active n'est sélectionnée à fermer.");
-            Toastify({
-                text: "Aucune conversation active à fermer.",
-                duration: 3000,
-                backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
-            }).showToast();
-        }
+    if (!confirm('Clore la conversation et supprimer les messages ?')) return;
+    try {
+      const res = await fetch(`${BASE}/canaux/${activeConversation.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ userId: idUser }),
+      });
+      if (!res.ok) throw new Error('Erreur suppression conversation');
+      toast('Conversation supprimée', 'success');
+      activeConversation = null;
+      messagesDisplay.innerHTML = '';
+      await loadConversations();
+    } catch (err) {
+      console.error(err);
+      toast('Erreur suppression conversation', 'error');
     }
+  });
+
+  // initial load
+  await loadConversations();
 });

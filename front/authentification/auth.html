@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion à la Messagerie</title>
     <link rel="stylesheet" href="auth.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
     <div class="auth-container">
@@ -15,7 +16,20 @@
             <button id="login-btn">Connexion</button>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/jsencrypt/bin/jsencrypt.min.js"></script>
-    <script src="auth.js"></script>
+
+    <!-- Bibliothèques JS -->
+    <script src="jsencrypt.js"></script>
+    <script src="jsencrypt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <!-- Module ES pour auth.js et idb -->
+    <script type="module">
+        import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@8.0.3/+esm';
+        import './auth.js';
+
+        // Rendre openDB global si auth.js l'utilise directement
+        window.openDB = openDB;
+    </script>
 </body>
 </html>

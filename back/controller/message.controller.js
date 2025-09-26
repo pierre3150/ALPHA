@@ -18,10 +18,10 @@ const MessageController ={
 
     getMessage: async (req, res) => {
         try {
-            const user = req.body.user;
+            const idReceiver = req.query.id_receiver;
             const message = await Message.findAll({ 
                 where: {
-                    id_Target: user
+                    id_receiver: idReceiver
                 }
             })
             const uncryptedMessage = await argon2.verify(message)

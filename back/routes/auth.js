@@ -8,6 +8,7 @@ const router = express.Router();
 // POST /auth/login
 router.post("/login", async (req, res) => {
     const { username, password } = req.body;
+    console.log("Login attempt for:", username);
 
     try {
         const user = await User.findOne({ where: { username } });
@@ -23,7 +24,7 @@ router.post("/login", async (req, res) => {
             { expiresIn: "8h" }
         );
 
-        res.json({ token, username: user.username, role: user.role });
+        res.json({ token, username: user.username, role: user.role, id: user.id});
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Erreur serveur" });

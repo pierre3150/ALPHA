@@ -6,6 +6,10 @@ import authRoutes from "./routes/auth.js";
 import { authenticateToken } from "./middleware/auth/authenticateToken.js";
 import adminRoutes from "./routes/admin.js";
 import keyRoutes from "./routes/keys.js";
+import canauxRoutes from './routes/canaux.js';
+import usersRoutes from './routes/users.js';
+import messagesRoutes from "./routes/messages.js";
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +38,10 @@ app.post("/auth/verify-token", authenticateToken, (req, res) => {
 app.use("/admin", adminRoutes);
 
 app.use("/keys", keyRoutes);
+
+app.use('/canaux', canauxRoutes);
+app.use('/users', usersRoutes);
+app.use("/messages", messagesRoutes);
 
 // Lancement de la connexion DB et du serveur
 (async () => {

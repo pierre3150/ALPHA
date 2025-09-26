@@ -1,27 +1,24 @@
+// models/canal.js
 import { DataTypes } from "sequelize";
 import sequelize from "../database/connection.js";
 
-const Message = sequelize.define("Message", {
+const Canal = sequelize.define("Canal", {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true,
     },
-    canalId: {
+    userid1: {
         type: DataTypes.INTEGER,
         allowNull: false,
     },
-    senderId: {
+    userid2: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-    },
-    content: {
-        type: DataTypes.TEXT,
         allowNull: false,
     }
 }, {
-    tableName: "messages",
-    timestamps: true // createdAt + updatedAt
+    tableName: "canaux", // nom de ta table en BDD
+    timestamps: true,    // createdAt et updatedAt
 });
 
-export default Message;
+export default Canal;
