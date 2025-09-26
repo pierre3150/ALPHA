@@ -11,6 +11,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const allowedOrigins = [
   "http://localhost:3000",
+  "https://10.60.12.114",
 ];
 
 app.use(
