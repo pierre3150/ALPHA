@@ -19,4 +19,32 @@ router.get("/", async (req, res) => {
     }
 });
 
+// GET /users/:id/public-key - Récupérer la clé publique d'un utilisateur
+router.get("/:id/public-key", async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const user = await User.findByPk(id, {
+            attributes: ['id', 'username', 'public_key']
+        });
+        
+        if (!user) {
+            return res.status(404).json({ message: "Utilisateur introuvable" });
+        }
+        
+        if (!user.public_key) {
+            return res.status(404).json({ message: "Clé publique non disponible" });
+        }
+        
+        res.json({
+            userId: user.id,
+            username: user.username,
+            publicKey: user.public_key
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Erreur serveur." });
+    }
+});
+
 export default router;

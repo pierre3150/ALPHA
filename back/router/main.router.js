@@ -1,8 +1,8 @@
 import { Router } from "express"
-import messageRouter from '../router/message.router.js'
 
 const mainRouter = Router()
 
-mainRouter.use(messageRouter);
+// Le mainRouter peut rester vide ou contenir d'autres routes API
+// Les messages sont gérés par la route directe /messages
 
 export default mainRouter;

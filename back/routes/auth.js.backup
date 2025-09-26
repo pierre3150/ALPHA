@@ -7,11 +7,11 @@ const router = express.Router();
 
 // POST /auth/login
 router.post("/login", async (req, res) => {
-    const { username, password } = req.body;
-    console.log("Login attempt for:", username);
+    const { idResistant, password } = req.body;
+    console.log("Login attempt for:", idResistant);
 
     try {
-        const user = await User.findOne({ where: { username } });
+        const user = await User.findOne({ where: { username: idResistant } });
         if (!user) return res.status(401).json({ message: "Utilisateur non trouvé" });
 
         const match = await bcrypt.compare(password, user.passwordHash);

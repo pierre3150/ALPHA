@@ -17,7 +17,15 @@ const Message = sequelize.define("Message", {
     },
     content: {
         type: DataTypes.TEXT,
-        allowNull: false,
+        allowNull: true,
+    },
+    encryptedMessage: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
+    encryptedForSender: {
+        type: DataTypes.TEXT,
+        allowNull: true,
     }
 }, {
     tableName: "messages",

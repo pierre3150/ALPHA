@@ -7,10 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             console.log("Tentative de connexion pour:", username);
-            const response = await fetch('https://10.60.12.114:3000/auth/login', {
+            const response = await fetch('http://10.60.12.114:3000/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ idResistant: username, password }),
+                credentials: 'include',
             });
 
             if (!response.ok) {

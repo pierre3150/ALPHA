@@ -1,0 +1,19 @@
+nohup: ignoring input
+🔍 Configuration DB: {
+  host: '10.60.12.114',
+  database: 'ALPHA',
+  user: 'root',
+  password: '***'
+}
+Executing (default): SELECT 1+1 AS result
+Executing (default): SELECT 1+1 AS result
+✅ Connexion à la base de donnée réussie
+✅ Base de données connectée
+Executing (default): SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'users' AND TABLE_SCHEMA = 'ALPHA'
+Executing (default): SHOW INDEX FROM `users`
+Executing (default): SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'messages' AND TABLE_SCHEMA = 'ALPHA'
+Executing (default): SHOW INDEX FROM `messages`
+✅ Synchronisation des tables OK
+🚀 Serveur HTTPS lancé sur https://0.0.0.0:3000
+🌐 Accessible via https://10.60.12.114:3000
+[GET] /

@@ -1,12 +1,20 @@
 import "dotenv/config";
 import { Sequelize } from "sequelize";
 
+// Debug des variables d'environnement
+console.log("🔍 Configuration DB:", {
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS ? '***' : 'non défini'
+});
+
 const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASS,
+  process.env.DB_NAME || 'ALPHA',
+  process.env.DB_USER || 'root',
+  process.env.DB_PASS || 'ExtinctDinosaur1987@',
   {
-    host: process.env.DB_HOST,
+    host: process.env.DB_HOST || 'localhost',
     dialect: "mysql",
   }
 );

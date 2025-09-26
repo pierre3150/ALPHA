@@ -4,25 +4,16 @@ import User from './user.js';
 
 Message.belongsTo(User, {
     as: 'Sender', 
-    foreignKey: 'id_User'
-});
-
-Message.belongsTo(User, {
-    as: 'Target', 
-    foreignKey: 'id_Target'
+    foreignKey: 'senderId'
 });
 
 User.hasMany(Message, {
     as: 'SentMessages',
-    foreignKey: 'id_User'
-});
-
-User.hasMany(Message, {
-    as: 'ReceivedMessages', 
-    foreignKey: 'id_Target'
+    foreignKey: 'senderId'
 });
 
 export {
     User,
+    Message,
     sequelize
 }

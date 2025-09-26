@@ -1,8 +1,10 @@
 import express from "express";
 import cors from "cors";
+import https from "https";
+import fs from "fs";
 import "dotenv/config";
 import sequelize from "./database/connection.js";
-import authRoutes from "./routes/auth.js";
+import authRouter from "./router/auth.router.js";
 import { authenticateToken } from "./middleware/auth/authenticateToken.js";
 import adminRoutes from "./routes/admin.js";
 import keyRoutes from "./routes/keys.js";
@@ -23,11 +25,19 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 // Middleware global
-app.use(cors());
+app.use(cors({
+    origin: 'http://10.60.12.114',
+    credentials: true
+}));
 app.use(express.json());
 
+// Route de base pour tester
+app.get("/", (req, res) => {
+    res.json({ message: "🚀 Serveur ALPHA backend actif", status: "OK", timestamp: new Date() });
+});
+
 // Routes d'authentification
-app.use("/auth", authRoutes);
+app.use("/auth", authRouter);
 
 // Vérification du token côté serveur
 app.post("/auth/verify-token", authenticateToken, (req, res) => {
@@ -52,7 +62,11 @@ app.use("/messages", messagesRoutes);
         await sequelize.sync(); // crée les tables si besoin
         console.log("✅ Synchronisation des tables OK");
 
-        app.listen(PORT, () => console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`));
+        app.listen(PORT, '0.0.0.0', () => {
+            const serverHost = process.env.SERVER_HOST || '10.60.12.114';
+            console.log(`🚀 Serveur lancé sur http://0.0.0.0:${PORT}`);
+            console.log(`🌐 Accessible via http://${serverHost}:${PORT}`);
+        });
     } catch (error) {
         console.error("❌ Echec de connexion DB:", error);
     }

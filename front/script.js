@@ -1,11 +1,14 @@
 // script.js
 document.addEventListener('DOMContentLoaded', async () => {
-  const BASE = "https://10.60.12.114:3000"; // adapte si besoin
+  const BASE = "http://10.60.12.114:3000"; // adapte si besoin
   const authToken = localStorage.getItem('authToken');
   const role = localStorage.getItem('role');
-  const idUser = localStorage.getItem('idUser'); // doit être rempli au login
+  const idUser = localStorage.getItem('idUser');
   const usernameDisplay = document.getElementById('usernameDisplay');
 
+  // Initialisation du gestionnaire de chiffrement
+  const cryptoManager = new CryptoManager();
+  
   // UI elements
   const newChatBtn = document.getElementById('new-chat-btn');
   const newChatModal = document.getElementById('new-chat-modal');
@@ -127,7 +130,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       if (!res.ok) throw new Error('Impossible de charger les messages');
       const msgs = await res.json();
-      msgs.forEach(renderMessage);
+      for (const msg of msgs) {
+        await renderMessage(msg);
+      }
       // start polling new messages for this canal
       if (pollingInterval) clearInterval(pollingInterval);
       pollingInterval = setInterval(() => refreshMessages(canal.id), 3000);
@@ -153,10 +158,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function renderMessage(msg) {
+  async function renderMessage(msg) {
     const div = document.createElement('div');
     div.className = msg.senderId == idUser ? 'sent' : 'received';
-    div.textContent = msg.content || msg.encryptedMessage || JSON.stringify(msg);
+    
+    let displayText = '';
+    
+    // Si le message est chiffré, tenter de le déchiffrer
+    if (msg.encryptedMessage) {
+      try {
+        const decryptedText = cryptoManager.decryptMessage(msg.encryptedMessage);
+        if (decryptedText) {
+          displayText = decryptedText;
+          console.log('✅ Message déchiffré avec succès');
+        } else {
+          displayText = '🔒 Message chiffré (clé privée manquante)';
+        }
+      } catch (err) {
+        console.error('❌ Erreur déchiffrement:', err);
+        displayText = '🔒 Erreur déchiffrement du message';
+      }
+    } else if (msg.content) {
+      displayText = msg.content;
+    } else {
+      displayText = JSON.stringify(msg);
+    }
+    
+    div.textContent = displayText;
     messagesDisplay.appendChild(div);
   }
 
@@ -240,12 +268,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Close conversation (delete canal)
-  closeChatBtn.addEventListener('click', async () => {
+  closeChatBtn.addEventListener('click', async (activeConversation) => {
     if (!activeConversation) {
       toast('Aucune conversation active', 'error');
       return;
     }
     if (!confirm('Clore la conversation et supprimer les messages ?')) return;
+    console.log(activeConversation);
+    
     try {
       const res = await fetch(`${BASE}/canaux/${activeConversation.id}`, {
         method: 'DELETE',
